@@ -129,4 +129,6 @@ dmypy.json
 .pyre/
 
 # User
+Database/
 Log/
+models/
