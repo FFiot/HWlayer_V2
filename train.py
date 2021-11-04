@@ -12,28 +12,22 @@ class net_test(torch.nn.Module):
         super(net_test, self).__init__()
         self.hw_layer = hw_layer(evaluate_dic_list)
         self.hw_dims = self.hw_layer.channels
-        self.conv1d = torch.nn.Conv1d(self.hw_layer.channels, self.hw_dims, 5, 1, 2, bias=False)
-        self.lstm1 = torch.nn.LSTM(self.hw_dims, self.hw_dims//2, bias=False, bidirectional=True, batch_first=True)
-        self.lstm2 = torch.nn.LSTM(self.hw_dims, self.hw_dims//2, bias=False, bidirectional=True, batch_first=True)
-        self.lstm3 = torch.nn.LSTM(self.hw_dims, self.hw_dims//2, bias=False, bidirectional=True, batch_first=True)
+        self.linear1 = torch.nn.Conv1d(self.hw_dims, self.hw_dims, 5, 1, 2, bias=False)
+        self.linear2 = torch.nn.Linear(self.hw_dims, self.hw_dims, bias=False)
+        self.linear3 = torch.nn.Linear(self.hw_dims, self.hw_dims, bias=False)
         self.fc1 = torch.nn.Linear(self.hw_dims, 32, bias=False)
         self.selu = torch.nn.SELU()
         self.fc2 = torch.nn.Linear(32, 1, bias=True)
     def forward(self, x):
         hw = self.hw_layer(x)
-        #Conv1d
-        x = torch.transpose(hw, -1, -2)
-        x = self.conv1d(x)
-        x = torch.transpose(x, -1, -2)
-        x = x * hw
         #lstm1
-        x, _ = self.lstm1(x)
+        x = self.linear1(hw)
         x = x * hw
         #lstm2
-        x, _ = self.lstm2(x)
+        x = self.linear2(x)
         x = x * hw
         #lstm3
-        x, _ = self.lstm3(x)
+        x = self.linear3(x)
         x = x * hw
         #fc1
         x = self.fc1(x)
