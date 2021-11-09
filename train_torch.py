@@ -13,42 +13,40 @@ from fastai.callback.tracker import ReduceLROnPlateau, SaveModelCallback
 from HW_base import evaluate_build, focus_build
 from HW_torch import hw_layer, dataLoads_build, net_parameter_count, torch_valid, torch_predict
 
-class net_forward(torch.nn.Module):
-    def __init__(self, evaluate_focus_list, embedding_dims=128, internal_dims=128, internal_layers=4, out_dims=32, **kwargs):
-        super(net_forward, self).__init__()
-        self.hw_layer = hw_layer(evaluate_focus_list)
-        self.fc1 = torch.nn.Linear(self.hw_layer.channels, embedding_dims, bias=False)
-        self.lstm = torch.nn.LSTM(hidden_size=embedding_dims, hidden_size=internal_dims, num_layers=internal_layers, bias=False, bidirectional=True, batch_first=True)
-        self.fc2 = torch.nn.Linear(internal_dims*2, out_dims, bias=False)
-
-    def forward(self, x):
-        x = self.hw_layer(x)
-        x = self.fc1(x)
-        x, _ = self.lstm(x)
-        x = self.fc2(x)
-        return x
-
-class net_back(torch.nn.Module):
-    def __init__(self, evaluate_focus_list, out_dims=1, **kwargs):
-        super(net_back, self).__init__()
-        self.hw_layer = hw_layer(evaluate_focus_list)
-        self.fc1 = torch.nn.Linear(self.hw_layer.channels, out_dims=1)
-
-    def forward(self, x):
-        x = self.hw_layer(x)
-        x = self.fc1(x)
-        return x
-
 class net_test(torch.nn.Module):
-    def __init__(self, evaluate_focus_list, embedding_size=128, internal_dims=128, internal_out_dims=32, out_dims=1, **kwargs):
+    def __init__(self, evaluate_focus_list, **kwargs):
         super(net_test, self).__init__()
-        self.input_layer = net_forward(evaluate_focus_list, embedding_size, internal_dims, internal_out_dims)
-        self.out_layer = torch.nn.Sequential(torch.nn.SELU(),
-                                             torch.nn.Linear(internal_out_dims, out_dims))
+        self.hw_layer = hw_layer(evaluate_focus_list)
+        self.embedding = torch.nn.Linear(self.hw_layer.channels, 128)
+
+        self.lstm1 = torch.nn.LSTM(128, 128, num_layers=1, bias=False, bidirectional=True, batch_first=True)
+        self.lstm2 = torch.nn.LSTM(128*3, 128, num_layers=1, bias=False, bidirectional=True, batch_first=True)
+        self.lstm3 = torch.nn.LSTM(128*5, 128,  num_layers=1, bias=False, bidirectional=True, batch_first=True)
+        self.lstm4 = torch.nn.LSTM(128*7, 128,  num_layers=1, bias=False, bidirectional=True, batch_first=True)
+
+        self.fc1 = torch.nn.Linear(128*8, 32, bias=False)
+        self.selu = torch.nn.SELU()
+        self.fc2 = torch.nn.Linear(32, 1)
 
     def forward(self, x):
-        x = self.input_layer(x)
-        x = self.out_layer(x)
+        x = self.hw_layer(x)
+        x = self.embedding(x)
+
+        x1, _ = self.lstm1(x)
+        x = torch.concat((x, x1), dim=-1)
+
+        x2, _ = self.lstm2(x)
+        x = torch.concat((x, x2), dim=-1)
+
+        x3, _ = self.lstm3(x)
+        x = torch.concat((x, x3), dim=-1)
+
+        x4, _ = self.lstm4(x)
+        x = torch.concat((x1, x2, x3, x4), dim=-1)
+
+        x = self.fc1(x)
+        x = self.selu(x)
+        x = self.fc2(x)
         return x
 
 if __name__ == '__main__':
