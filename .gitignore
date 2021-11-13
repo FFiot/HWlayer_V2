@@ -129,8 +129,8 @@ dmypy.json
 .pyre/
 
 # User
-Database/
-Log/
-models/
-Submission/
-Model/
+Database/*
+Log/*
+models/*
+Submission/*
+Model/*
