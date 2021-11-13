@@ -107,4 +107,3 @@ if __name__ == '__main__':
     x_train = torch_predict([net.input_layer], x_train, 100, to_device=device)
     x_valid = torch_predict([net.input_layer], x_valid, 100, to_device=device)
     x_test  = torch_predict([net.input_layer], x_test, 100, to_device=device)
-
