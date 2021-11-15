@@ -22,7 +22,11 @@ HWlayer_V2
 * 无限叠加模型（有些失败，再议）。
   * 简单地增加模型规模，性能提升有限。
   * 性能较强，如能在模型中多次使用，理论上会多次增加模型性能。
-* 将获得的概率值作为 “激活层” 使用（有些失败，再议）。
+* 将获得的概率值作为 “激活层” 使用。
+  * x  -> hw_layer -> x1 
+  * x1 -> Linear   -> x2
+  * x3 = x2 * x 
+  * 由于过于稀疏，导致模型很少的参数在工作，需要非常大的网络。
 ## 训练
 * focus 设定为0.6时，较小的模型表现力较好。
 * 较大的 batch_size，开始阶段，会使loss下降非常快，后期性能较差。
@@ -36,3 +40,12 @@ HWlayer_V2
 * 感谢 Google、Pyorch、FastAI...
 * 抱歉：学习AI的时间较少，投入时间较少，没有稳定的显卡，未能找到基于线性输入的数据集......
 ## 对比
+*  使用HW_layer, History/F5-E128-F60_Linear-LSTM128x4-FC-SELU-FC
+  * 参数：150K 
+  * Private Score: 0.1972
+  * Public Score  0.1918
+* 不使用HW_layer, History/F25_Linear-LSTM128x4-FC-SELU-FC
+  * 参数：150K 
+  * Private Score: 0.2234
+  * Public Score:  0.2189
+* 增加很少的参数，并且做特征工程，获得了提升。
