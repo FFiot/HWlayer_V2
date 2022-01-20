@@ -107,7 +107,7 @@ def gpu_limit(gpu, MB):
             print(e)
 
 if __name__ == '__main__':
-    os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+    # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
     def test_fucntion(x):
         return np.sin(x**2 * np.pi * 8)/2 - (x)**2 + 0.5
