@@ -29,4 +29,5 @@
 * For a dimension, the distribution of data is not uniform, such as using the same focus value will cause network exceptions.
 * 对每一个 evaluate 值，计算 focus，使得每一个 evaluate 计算获得的概率值大致相同。
 * For each evaluate value, calculate focus, so that the probability value obtained by each evaluate calculation is roughly the same. 
-与“Compared”有关的更多信息
+* 累计各值域损失: 大于预期的值域进行分裂，小于预期的值域与周围值域合并。
+* By accumulating the loss of each value field: larger than expected will be split, less than expected will be merged.
