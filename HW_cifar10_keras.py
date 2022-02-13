@@ -6,7 +6,7 @@ from tensorflow.keras.models import Model, Sequential
 from tensorflow.keras.layers import Input, Flatten, Dense, Conv2D, MaxPooling2D, BatchNormalization, Activation, Dropout
 from tensorflow.keras.optimizers import Adam, SGD
 from tensorflow.keras.losses import BinaryCrossentropy, Huber
-from tensorflow.keras.metrics import AUC, BinaryAccuracy, Accuracy
+from tensorflow.keras.metrics import AUC, Precision, Accuracy
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard, ReduceLROnPlateau
 
 def min_max_normal(x):
