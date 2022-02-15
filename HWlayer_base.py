@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 
 from matplotlib import pyplot as plt
+
 def plt_scatter(x, y_predict=None, y_true=None, title=None):
     plt.figure(figsize=(8, 4))
     plt.xlim(-0.05, 1.05)
