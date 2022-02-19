@@ -131,7 +131,7 @@ dmypy.json
 # User
 Database/*
 Log/*
+runs/
 models/*
 Submission/*
-Model/*
 Dataset/*
