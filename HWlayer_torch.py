@@ -2,9 +2,16 @@ import numpy as np
 
 import torch
 import torch.nn as nn
-
+import torch.optim as optim
+import torch.nn.functional as F
+import torch.backends.cudnn as cudnn
 import torchvision
 import torchvision.transforms as transforms
+
+from tensorboardX import SummaryWriter
+from torchsummary import summary
+
+from tqdm import tqdm
 
 from HWlayer_base import evaluate_build, focus_build
 
@@ -28,8 +35,9 @@ class HWlayer2D(nn.Module):
         self.channels = sum([len(evaluate_focus) for evaluate_focus in evaluate_focus_list])
 
     def forward(self, x):
+        output_list = []
         for i in range(x.shape[1]):
-            evaluate = self.evaluate_list[i].weight
+            evaluate = self.evaluate_list[i].weight.flatten()
             dims = evaluate.shape[0]
             evaluate = evaluate.reshape((1, dims, 1, 1))
             
@@ -38,19 +46,23 @@ class HWlayer2D(nn.Module):
             d = d - evaluate
             d = d.abs()
 
-            focus = self.focus_list[i] 
-            focus_idx = d.argmin(axis=1)
-            focus = focus(focus_idx)
+            f = self.focus_list[i]
+            f_idx = d.argmin(axis=1, keepdim=True)
+            f = f(f_idx).squeeze(-1)
 
-            pass
-        return x
+            s = d * f * -1.0
+            s = s.softmax(1)
+
+            output_list.append(s)
+        y = torch.cat(output_list, dim=1)
+        return y
 
 class HWlayer_poolling2D(nn.Module):
-    def __init__(self, deepth, kernel_size=2, stride=2):
+    def __init__(self, deepth=2, kernel_size=2, stride=2):
         super(HWlayer_poolling2D, self).__init__()
         self.deepth = deepth
         self.poolling_layer = nn.MaxPool2d(kernel_size=kernel_size, stride=stride)
-    
+
     def forward(self, x):
         output_list = [x]
         for _ in range(self.deepth):
@@ -69,33 +81,99 @@ class HWlayer_VGG(nn.Module):
         for _ in range(len(evaluate_focus_table)-1):
             self.poolling_list.append(nn.MaxPool2d(kernel_size=2, stride=2))
 
+        self.s1 = nn.Sequential(
+            nn.Conv2d(24, 24*16, kernel_size=3, padding=1),
+            nn.BatchNorm2d(24*16),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2))
+
+        self.s2 = nn.Sequential(
+            nn.Conv2d(24*16, 24*32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(24*32),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2))
+        
+        self.s3 = nn.Sequential(
+            nn.Conv2d(24*32, 24*64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(24*64),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2))
+
+        self.s4 = nn.Sequential(
+            nn.Conv2d(24*64, 24*64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(24*64),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2))
+
+        self.fc = nn.Sequential(
+            nn.AvgPool2d(kernel_size=2, stride=2),
+            nn.Flatten(),
+            nn.Linear(24*64, 10))
+
     def forward(self, x):
         x_poolling_list = [x]
         for poolling in self.poolling_list:
             x_poolling_list.append(poolling(x_poolling_list[-1]))
 
-        x_hw_list = [hw(x) for x, hw in zip(x_poolling_list, self.HWlayer_list)]
-        return x_hw_list
+        hw_list = [hw(p) for p, hw in zip(x_poolling_list, self.HWlayer_list)]
+        hw_dic = {hw.shape[-1]:hw.unsqueeze(1) for hw in hw_list}
+        
+        x = hw_list[0]
 
+        x = self.s1(x)
+        x_shape = list(x.shape)
+        s = [x_shape[0]] + [x_shape[1]//24, 24] + x_shape[2:]
+        x = x.reshape(s) 
+        x = x * hw_dic[x.shape[-1]]
+        x = x.reshape(x_shape)
+
+        x = self.s2(x)
+        x_shape = list(x.shape)
+        s = [x_shape[0]] + [x_shape[1]//24, 24] + x_shape[2:]
+        x = x.reshape(s) 
+        x = x * hw_dic[x.shape[-1]]
+        x = x.reshape(x_shape)
+
+        x = self.s3(x)
+        x_shape = list(x.shape)
+        s = [x_shape[0]] + [x_shape[1]//24, 24] + x_shape[2:]
+        x = x.reshape(s) 
+        x = x * hw_dic[x.shape[-1]]
+        x = x.reshape(x_shape)
+
+        x = self.s4(x)
+        x_shape = list(x.shape)
+        s = [x_shape[0]] + [x_shape[1]//24, 24] + x_shape[2:]
+        x = x.reshape(s) 
+        x = x * hw_dic[x.shape[-1]]
+        x = x.reshape(x_shape)
+
+        x = self.fc(x)
+
+        return x
 
 if __name__ == '__main__':
-    transform_train = transforms.Compose([transforms.RandomCrop(32, padding=4),
-                                          transforms.RandomHorizontalFlip(),
-                                          transforms.RandomVerticalFlip(),
-                                          transforms.ToTensor(),
-                                          transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),])
+    # train_data 
+    transform_train = transforms.Compose([
+        transforms.RandomCrop(32, padding=4),
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomVerticalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+        ])
     train_dataset = torchvision.datasets.CIFAR10(root='./Dataset', train=True, download=True, transform=transform_train)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=100, shuffle=True, num_workers=2)
-
+    
+    # test_data
     transform_test = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-    ])
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
+        ])
     test_dataset = torchvision.datasets.CIFAR10(root='./Dataset', train=False, download=True, transform=transform_test)
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=100, shuffle=False)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    deepth = 2
+    deepth = 4
 
     output_list = [[] for _ in range(deepth+1)]
     net = HWlayer_poolling2D(deepth).to(device)
@@ -114,6 +192,68 @@ if __name__ == '__main__':
 
     net = HWlayer_VGG(evaluate_focus_table).to(device)
 
-    for x, y in train_loader:
-        x, y = x.to(device), y.to(device)
-        p = net(x)
+    summary(net, input_size=(3, 32, 32))
+
+    if device == 'cuda':
+        net = torch.nn.DataParallel(net)
+        cudnn.benchmark = True
+
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-4)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
+
+    def valid(epoch):
+        net.eval()
+        loss_list, p_list, y_list = [], [], []
+        for idx, (x, y) in enumerate(test_loader):
+            x, y = x.to(device), y.to(device)
+            p = net(x)
+
+            loss = criterion(p, y)
+            loss_list.append(loss.item())
+
+            _, p = p.max(axis=-1)
+            y_list.append(y.detach().cpu().numpy())
+            p_list.append(p.detach().cpu().numpy())
+        
+        loss = np.array(loss_list).mean()
+        acc = (np.array(p_list) == np.array(y_list)).astype(np.float32).mean()
+        
+        return loss, acc
+
+    def train(epoch):
+        net.train()        
+        loss_list, p_list, y_list = [], [], []
+        with tqdm((enumerate(train_loader)), desc='epoch%3d'%epoch, total=len(train_loader), ncols=0) as t:
+            for idx, (x, y) in t:
+                x, y = x.to(device), y.to(device)
+                p = net(x)
+                
+                optimizer.zero_grad()
+                loss = criterion(p, y)
+                loss.backward()
+                optimizer.step()
+
+                loss_list.append(loss.item())
+
+                _, p = p.max(axis=-1)
+                y_list.append(y.detach().cpu().numpy())
+                p_list.append(p.detach().cpu().numpy())
+                if idx+1 < len(train_loader):
+                    t.set_postfix({'loss':'%0.4f'%loss_list[-1]})
+                else:
+                    loss = np.array(loss_list).mean()
+                    acc = (np.array(p_list) == np.array(y_list)).astype(np.float32).mean()
+                    
+                    valid_loss, valid_acc = valid(epoch)
+                    t.set_postfix({'loss':'%0.4f'%loss, 'acc':'%0.4f'%acc, 'valid_loss':'%0.4f'%valid_loss, 'valid_acc':'%0.4f'%valid_acc})
+            return loss, acc, valid_loss, valid_acc
+
+    writer = SummaryWriter()
+    # writer.add_graph(net, input_to_model=torch.from_numpy(np.random.randn(2,3,32,32).astype(np.float32)).to(device), verbose=False)
+    for epoch in range(200):
+        train_loss, train_acc, valid_loss, valid_acc = train(epoch)
+        writer.add_scalar('loss/train', train_loss, epoch)
+        writer.add_scalar('acc/train', train_acc, epoch)
+        writer.add_scalar('loss/valid', valid_loss, epoch)
+        writer.add_scalar('acc/valid', valid_acc, epoch)
