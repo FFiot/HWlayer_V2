@@ -37,18 +37,18 @@ class HWlayer2D(nn.Module):
     def forward(self, x):
         output_list = []
         for i in range(x.shape[1]):
-            evaluate = self.evaluate_list[i].weight.flatten()
-            dims = evaluate.shape[0]
-            evaluate = evaluate.reshape((1, dims, 1, 1))
+            e = self.evaluate_list[i].weight.flatten()
+            dims = e.shape[0]
+            e = e.reshape((1, dims, 1, 1))
             
             d = x[:, i, :, :]
             d = d.unsqueeze(1)
-            d = d - evaluate
+            d = d - e
             d = d.abs()
 
             f = self.focus_list[i]
-            f_idx = d.argmin(axis=1, keepdim=True)
-            f = f(f_idx).squeeze(-1)
+            idx = d.argmin(axis=1, keepdim=True)
+            f = f(idx).squeeze(-1)
 
             s = d * f * -1.0
             s = s.softmax(1)
@@ -61,13 +61,15 @@ class HWlayer_poolling2D(nn.Module):
     def __init__(self, deepth=2, kernel_size=2, stride=2):
         super(HWlayer_poolling2D, self).__init__()
         self.deepth = deepth
-        self.poolling_layer = nn.MaxPool2d(kernel_size=kernel_size, stride=stride)
+        self.poolling_list = torch.nn.ModuleList()
+        for i in range(deepth):
+            self.poolling_list.append(nn.MaxPool2d(kernel_size=kernel_size, stride=stride))
 
     def forward(self, x):
         output_list = [x]
-        for _ in range(self.deepth):
-            y = self.poolling_layer(output_list[-1])
-            output_list.append(y)
+        for poolling in range(self.deepth):
+            output_list.append(poolling(output_list[-1]))
+
         return tuple(output_list)
 
 class HWlayer_VGG(nn.Module):
@@ -109,6 +111,10 @@ class HWlayer_VGG(nn.Module):
             nn.AvgPool2d(kernel_size=2, stride=2),
             nn.Flatten(),
             nn.Linear(24*64, 10))
+
+    def acitve(self, x):
+        x_shape = list(x.shape)
+        
 
     def forward(self, x):
         x_poolling_list = [x]
