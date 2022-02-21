@@ -83,34 +83,54 @@ class HWlayer_VGG(nn.Module):
         for _ in range(len(evaluate_focus_table)-1):
             self.poolling_list.append(nn.MaxPool2d(kernel_size=2, stride=2))
 
+        self.p1 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.p2 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.p3 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.p4 = nn.MaxPool2d(kernel_size=2, stride=2)
+
         self.s1 = nn.Sequential(
-            nn.Conv2d(24, 24*16, kernel_size=3, padding=1),
-            nn.BatchNorm2d(24*16),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2))
+            nn.Conv2d(24, 24*4, kernel_size=3, padding=1),
+            nn.BatchNorm2d(24*4),
+            nn.ReLU(inplace=True))
 
         self.s2 = nn.Sequential(
-            nn.Conv2d(24*16, 24*32, kernel_size=3, padding=1),
-            nn.BatchNorm2d(24*32),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2))
-        
+            nn.Conv2d(24*4, 24*4, kernel_size=3, padding=1),
+            nn.BatchNorm2d(24*4),
+            nn.ReLU(inplace=True))
+
         self.s3 = nn.Sequential(
-            nn.Conv2d(24*32, 24*64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(24*64),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2))
+            nn.Conv2d(24*4, 24*4, kernel_size=3, padding=1),
+            nn.BatchNorm2d(24*4),
+            nn.ReLU(inplace=True))
 
         self.s4 = nn.Sequential(
-            nn.Conv2d(24*64, 24*64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(24*64),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2))
+            nn.Conv2d(24*4, 24*4, kernel_size=3, padding=1),
+            nn.BatchNorm2d(24*4),
+            nn.ReLU(inplace=True))
+        
+        self.s5 = nn.Sequential(
+            nn.Conv2d(24*4, 24*4, kernel_size=3, padding=1),
+            nn.BatchNorm2d(24*4),
+            nn.ReLU(inplace=True))
+
+        self.s6 = nn.Sequential(
+            nn.Conv2d(24*4, 24*4, kernel_size=3, padding=1),
+            nn.BatchNorm2d(24*4),
+            nn.ReLU(inplace=True))
+
+        self.s7 = nn.Sequential(
+            nn.Conv2d(24*4, 24*4, kernel_size=3, padding=1),
+            nn.BatchNorm2d(24*4),
+            nn.ReLU(inplace=True))
+
+        self.s8 = nn.Sequential(
+            nn.Conv2d(24*4, 24*4, kernel_size=3, padding=1),
+            nn.BatchNorm2d(24*4),
+            nn.ReLU(inplace=True))
 
         self.fc = nn.Sequential(
-            nn.AvgPool2d(kernel_size=2, stride=2),
             nn.Flatten(),
-            nn.Linear(24*64, 10))
+            nn.Linear(4*24*4, 10))
     
     def forward(self, x):
         x_poolling_list = [x]
@@ -123,29 +143,37 @@ class HWlayer_VGG(nn.Module):
         x = hw_list[0]
 
         def hw_acitve(x, hw_acitve_dic):
-            dims = x.shape[-1]
-            if dims not in hw_acitve_dic:
-                return x
-            hw_layer = hw_acitve_dic[dims]
+            # dims = x.shape[-1]
+            # if dims not in hw_acitve_dic:
+            #     return x
+            # hw_layer = hw_acitve_dic[dims]
             
-            dims = hw_layer.shape[2]
-            x_shape = list(x.shape)
-            shape = [x_shape[0]] + [x_shape[1]//dims, dims] +x_shape[2:]
-            x = x.reshape(shape) * hw_layer
-            x = x.reshape(x_shape)
+            # dims = hw_layer.shape[2]
+            # x_shape = list(x.shape)
+            # shape = [x_shape[0]] + [x_shape[1]//dims, dims] +x_shape[2:]
+            # y = x.reshape(shape) * hw_layer
+            # y = y.reshape(x_shape)
             return x
 
-        x = self.s1(x)
-        x = hw_acitve(x, hw_acitve_dic)
+        x = hw_acitve(self.s1(x), hw_acitve_dic)
+        x = hw_acitve(self.s2(x), hw_acitve_dic)
 
-        x = self.s2(x)
-        x = hw_acitve(x, hw_acitve_dic)
+        x = self.p1(x)
 
-        x = self.s3(x)
-        x = hw_acitve(x, hw_acitve_dic)
+        x = hw_acitve(self.s3(x), hw_acitve_dic)
+        x = hw_acitve(self.s4(x), hw_acitve_dic)
 
-        x = self.s4(x)
-        x = hw_acitve(x, hw_acitve_dic)
+        x = self.p2(x)
+
+        x = hw_acitve(self.s5(x), hw_acitve_dic)
+        x = hw_acitve(self.s6(x), hw_acitve_dic)
+
+        x = self.p3(x)
+
+        x = hw_acitve(self.s7(x), hw_acitve_dic)
+        x = hw_acitve(self.s8(x), hw_acitve_dic)
+
+        x = self.p4(x)
 
         x = self.fc(x)
 
@@ -161,7 +189,7 @@ if __name__ == '__main__':
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
         ])
     train_dataset = torchvision.datasets.CIFAR10(root='./Dataset', train=True, download=True, transform=transform_train)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=100, shuffle=True, num_workers=2)
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=100, shuffle=True, num_workers=6)
     
     # test_data
     transform_test = transforms.Compose([
@@ -169,7 +197,7 @@ if __name__ == '__main__':
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
         ])
     test_dataset = torchvision.datasets.CIFAR10(root='./Dataset', train=False, download=True, transform=transform_test)
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=100, shuffle=False)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=100, shuffle=False, num_workers=6)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     deepth = 4
@@ -186,7 +214,7 @@ if __name__ == '__main__':
     for image_array in output_list:
         image_array = np.concatenate(image_array, axis=0)
         evaluate_list = [evaluate_build(image_array[:, i, :, :], 8) for i in range(d.shape[1])]
-        evaluate_focus_list = [focus_build(evaluate, 0.8) for evaluate in evaluate_list]
+        evaluate_focus_list = [focus_build(evaluate, 0.2) for evaluate in evaluate_list]
         evaluate_focus_table.append(evaluate_focus_list)
 
     net = HWlayer_VGG(evaluate_focus_table).to(device)
