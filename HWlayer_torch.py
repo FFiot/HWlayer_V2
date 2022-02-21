@@ -67,7 +67,7 @@ class HWlayer_poolling2D(nn.Module):
 
     def forward(self, x):
         output_list = [x]
-        for poolling in range(self.deepth):
+        for poolling in self.poolling_list:
             output_list.append(poolling(output_list[-1]))
 
         return tuple(output_list)
@@ -111,48 +111,41 @@ class HWlayer_VGG(nn.Module):
             nn.AvgPool2d(kernel_size=2, stride=2),
             nn.Flatten(),
             nn.Linear(24*64, 10))
-
-    def acitve(self, x):
-        x_shape = list(x.shape)
-        
-
+    
     def forward(self, x):
         x_poolling_list = [x]
         for poolling in self.poolling_list:
             x_poolling_list.append(poolling(x_poolling_list[-1]))
 
         hw_list = [hw(p) for p, hw in zip(x_poolling_list, self.HWlayer_list)]
-        hw_dic = {hw.shape[-1]:hw.unsqueeze(1) for hw in hw_list}
-        
+        hw_acitve_dic = {hw.shape[-1]:hw.unsqueeze(1) for hw in hw_list}
+
         x = hw_list[0]
 
+        def hw_acitve(x, hw_acitve_dic):
+            dims = x.shape[-1]
+            if dims not in hw_acitve_dic:
+                return x
+            hw_layer = hw_acitve_dic[dims]
+            
+            dims = hw_layer.shape[2]
+            x_shape = list(x.shape)
+            shape = [x_shape[0]] + [x_shape[1]//dims, dims] +x_shape[2:]
+            x = x.reshape(shape) * hw_layer
+            x = x.reshape(x_shape)
+            return x
+
         x = self.s1(x)
-        x_shape = list(x.shape)
-        s = [x_shape[0]] + [x_shape[1]//24, 24] + x_shape[2:]
-        x = x.reshape(s) 
-        x = x * hw_dic[x.shape[-1]]
-        x = x.reshape(x_shape)
+        x = hw_acitve(x, hw_acitve_dic)
 
         x = self.s2(x)
-        x_shape = list(x.shape)
-        s = [x_shape[0]] + [x_shape[1]//24, 24] + x_shape[2:]
-        x = x.reshape(s) 
-        x = x * hw_dic[x.shape[-1]]
-        x = x.reshape(x_shape)
+        x = hw_acitve(x, hw_acitve_dic)
 
         x = self.s3(x)
-        x_shape = list(x.shape)
-        s = [x_shape[0]] + [x_shape[1]//24, 24] + x_shape[2:]
-        x = x.reshape(s) 
-        x = x * hw_dic[x.shape[-1]]
-        x = x.reshape(x_shape)
+        x = hw_acitve(x, hw_acitve_dic)
 
         x = self.s4(x)
-        x_shape = list(x.shape)
-        s = [x_shape[0]] + [x_shape[1]//24, 24] + x_shape[2:]
-        x = x.reshape(s) 
-        x = x * hw_dic[x.shape[-1]]
-        x = x.reshape(x_shape)
+        x = hw_acitve(x, hw_acitve_dic)
 
         x = self.fc(x)
 
