@@ -1,0 +1,14 @@
+        # all_states = {'epoch': epoch, 
+        #               'net_backbone': net_backbone.state_dict(),
+        #               'net_linear': net_linear.state_dict(),
+        #               'optimizer': optimizer.state_dict(),
+        #               'train_loss': train_loss,
+        #               'train_acc': train_acc,
+        #               'valid_loss': valid_loss,
+        #               'valid_acc': valid_acc}
+        # torch.save(obj=all_states, f="./models/linear_epoch_%05d.pth"%(epoch))
+        # torch.save(obj=all_states, f="./models/linear_last.pth")
+
+    
+    # checkpoint = torch.load('./models/linear_last.pth')
+    # net_backbone.load_state_dict(checkpoint['net_backbone'])

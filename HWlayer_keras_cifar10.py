@@ -3,6 +3,7 @@ import time
 import numpy as np
 
 import tensorflow as tf
+import tensorflow_addons as tfa
 import tensorflow.keras.backend as K
 
 from tensorflow.keras.datasets import cifar10
@@ -90,8 +91,16 @@ if __name__ == '__main__':
         
     model_name = time.strftime('CIFAR10_VGG_KERAS_HWNET%Y%m%d%H%M%S')
 
+    steps_per_epoch = len(x_train) // 100
+    clr = tfa.optimizers.CyclicalLearningRate(initial_learning_rate=0.0001,
+                                              maximal_learning_rate=0.01,
+                                              scale_fn=lambda x: 1/(2.**(x-1)),
+                                              step_size=2 * steps_per_epoch)
+    optimizer = tf.keras.optimizers.SGD(clr)
+
+
     model.compile(loss='categorical_crossentropy', 
-                  optimizer=RMSprop(learning_rate=0.0001, decay=1e-6), 
+                  optimizer=optimizer,
                   metrics=['categorical_accuracy'])
 
     callback_list = [
@@ -124,4 +133,4 @@ if __name__ == '__main__':
 
     datagen.fit(x_train)
 
-    model.fit(datagen.flow(x_train, y_train, batch_size=100), epochs=200, validation_data=(x_test, y_test), validation_batch_size=100, callbacks=callback_list)
+    model.fit(datagen.flow(x_train, y_train, batch_size=100), epochs=200, validation_data=(x_test, y_test), validation_batch_size=1000, callbacks=callback_list)
