@@ -1,0 +1,11 @@
+/use [mod:alt,@player][@mouseover,help,nodead][help,nodead] 生命绽放(等级 3);[harm] 精灵之火;
+
+/use [mod:alt,@player][@mouseover,help,nodead][help,nodead] 回春术(等级 15);[harm] 月火术(等级 14);
+
+/use [mod:alt,@player][@mouseover,help,nodead][help,nodead] 愈合(等级 12);[harm] 愤怒(等级 12);
+
+/use [mod:alt,@player][@mouseover,help,nodead][help,nodead] 治疗之触(等级 15);[harm] 星火术(等级 10);
+
+/use [mod:alt,@player][@mouseover,help,nodead][help,nodead] 驱毒术;[harm] 虫群(等级 7);
+
+/cast [@cursor] 飓风(等级 5)
