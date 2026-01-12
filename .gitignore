@@ -134,3 +134,7 @@ Log/*
 models/*
 Submission/*
 Model/*
+*.onnx
+*.npz
+*.pth
+*.db
